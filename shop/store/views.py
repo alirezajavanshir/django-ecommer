@@ -10,10 +10,10 @@ from django import forms
 
 
 
-def category(request, foo):
-    foo = foo.replace('-', ' ')
+def category(request, foods):
+    foods = foods.replace('-', ' ')
     try:
-        category = Category.objects.get(name=foo)
+        category = Category.objects.get(name=foods)
         products = Product.objects.filter(category=category)
         all_categories = Category.objects.all()  
 
