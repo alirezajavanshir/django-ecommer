@@ -1,16 +1,23 @@
-from django.urls import path
+from django.urls import re_path, path
 from . import views
+from .views import (
+    CategoryDetailView,
+    ProductDetailView,
+    CustomLoginView,
+    RegisterUserView,
+    LogoutView,
+)
 
 urlpatterns = [
-
-    path('',views.home,name='home'),
-    path('product/<int:id>/',views.product,name='product'),
-    path('about/',views.about,name='about'),
-    path('category/<str:foods>/',views.category,name='category'),
-    path('login/',views.login_user,name='login'),
-    path('logout/',views.logout_user,name='logout'),
-    path('register/',views.register_user,name='register'),
-    
-
-
+    re_path(
+        r"^category/(?P<slug>[-\w]+)/$",
+        CategoryDetailView.as_view(),
+        name="category_detail",
+    ),
+    path("product/<int:pk>/", ProductDetailView.as_view(), name="product_detail"),
+    path("login/", CustomLoginView.as_view(), name="login"),
+    path("register/", RegisterUserView.as_view(), name="register"),
+    path("logout/", LogoutView.as_view(), name="logout"),
+    path("about/", views.about, name="about"),
+    path("", views.home, name="home"),
 ]

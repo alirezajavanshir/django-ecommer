@@ -1,83 +1,92 @@
-from django.shortcuts import render,redirect
-from .models import Product,Category
-from django.contrib.auth import authenticate,login,logout
+from django.views.generic import DetailView, RedirectView
+from django.shortcuts import get_object_or_404, render, redirect
+from .models import Product, Category
+from django.contrib.auth.views import LoginView
+from django.contrib.auth.forms import AuthenticationForm
+from django.views.generic.edit import CreateView
+from django.contrib.auth import login, logout, authenticate
 from django.contrib import messages
-from django.contrib.auth.models import User
-from django.contrib.auth.forms import UserCreationForm
 from .forms import SignUpForm
-from django import forms
+from django.urls import reverse_lazy
 
 
+def navbar_context(request):
+    categories = Category.objects.all()
+    return {
+        "categories": categories,
+    }
 
 
-def category(request, foods):
-    foods = foods.replace('-', ' ')
-    try:
-        category = Category.objects.get(name=foods)
-        products = Product.objects.filter(category=category)
-        all_categories = Category.objects.all()  
+def home(request):
+    products = Product.objects.all()
+    return render(request, "home.html", {"products": products})
 
-        return render(request, 'category.html', {
-            'products': products, 
-            'category': category,
-            'all_categories': all_categories  
-        })
-    except Category.DoesNotExist:
-        messages.error(request, "The category not found!!")
-        return redirect('home')
+
+class CategoryDetailView(DetailView):
+    model = Category
+    template_name = "category.html"
+    context_object_name = "category"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        category = self.get_object()  # دریافت شیء فعلی (دسته‌بندی)
+        products = Product.objects.filter(
+            category=category
+        )  # فیلتر کردن محصولات بر اساس دسته‌بندی
+        context["products"] = products  # اضافه کردن محصولات به context
+        return context
+
+
+class ProductDetailView(DetailView):
+    model = Product
+    template_name = "product.html"
+    context_object_name = "product"
+
+
+class CustomLoginView(LoginView):
+    form_class = AuthenticationForm
+    template_name = "login.html"
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, "شما با موفقیت وارد شدید.")
+        return response
+
+    def form_invalid(self, form):
+        messages.error(self.request, "نام کاربری یا رمز عبور اشتباه است.")
+        return super().form_invalid(form)
+
+
+class RegisterUserView(CreateView):
+    form_class = SignUpForm
+    template_name = "register.html"
+    success_url = reverse_lazy("home")
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        username = form.cleaned_data["username"]
+        password = form.cleaned_data["password1"]
+        user = authenticate(username=username, password=password)
+        if user is not None:
+            login(self.request, user)
+            messages.success(self.request, "ثبت نام با موفقیت انجام شد.")
+        return response
+
+    def form_invalid(self, form):
+        messages.error(
+            self.request, "ثبت نام ناموفق بود. لطفاً فیلدها را به درستی پر کنید."
+        )
+        return super().form_invalid(form)
+
+
+class LogoutView(RedirectView):
+    url = reverse_lazy("home")
+
+    def get(self, request, *args, **kwargs):
+        logout(request)
+        messages.success(request, "با موفقیت از حساب کاربری خود خارج شدید.")
+        return super().get(request, *args, **kwargs)
 
 
 def about(request):
-    return render(request, 'about.html',{})
-
-def home(request):
-    
-    products= Product.objects.all()
-    return render(request, 'home.html', {'products':products})
-
-
-def login_user(request):
-    if request.method == "POST":
-        username = request.POST['username']
-        password = request.POST['password']
-        user = authenticate(request,username=username, password=password)
-        if user is not None:
-            login(request, user)
-            messages.success(request, "Logged in successfully!")
-            return redirect("home")
-        else:
-            messages.success(request, "There was an error!")
-            return redirect("login")
-    else:
-        return render(request, 'login.html', {})
-
-
-def logout_user(request):
-    logout(request)
-    messages.success(request, "Logged out successfully!")
-    return redirect('home')
-
-
-def register_user(request):
-    form= SignUpForm()
-    if request.method == 'POST':
-        form=SignUpForm(request.POST)
-        if form.is_valid():
-            form.save()
-            username = form.cleaned_data['username']
-            password = form.cleaned_data['password1']
-            user = authenticate(username=username, password=password)
-            login(request, user)
-            messages.success(request, "Registration successful!")
-            return redirect('home')
-        else:
-            messages.error(request, 'Registration failed!')
-            return redirect('register')
-    else:
-        return render(request,'register.html', {'form':form})
-        
-
-def product(request,id):
-
-    product=Product.objects.get(id=id)
-    return render(request, 'product.html', {'product': product})
+    return render(request, "about.html", {})
